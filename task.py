@@ -23,6 +23,7 @@ class TaskStatus:
     Using a class instead of an Enum keeps things beginner-friendly.
     """
     PENDING = "PENDING"
+    QUEUED = "QUEUED"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
@@ -79,6 +80,8 @@ class Task:
         self.assigned_vm_id = None
         self.start_time = None
         self.end_time = None
+        self.queue_entered_at = None
+        self.rejection_reason = None
 
         # Remaining work — decremented during execution
         self.remaining_workload = workload
@@ -141,6 +144,8 @@ class Task:
             "status": self.status,
             "assigned_node": self.assigned_node,
             "assigned_vm_id": self.assigned_vm_id,
+            "waiting_time": round(self.waiting_time, 3) if self.waiting_time is not None else None,
+            "rejection_reason": self.rejection_reason,
             "start_time": round(self.start_time, 3) if self.start_time else None,
             "end_time": round(self.end_time, 3) if self.end_time else None,
             "response_time": round(self.response_time, 3) if self.response_time else None,

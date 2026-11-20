@@ -356,14 +356,17 @@ with tab_overview:
             with c5:
                 st.metric("⏱️ Avg Response", f"{s['avg_response_time']:.3f}s")
 
-            c6, c7, c8, c9 = st.columns(4)
+            c6, c7, c8, c9, c10 = st.columns(5)
+            resource_summary = result["resource_manager"].summary()
             with c6:
                 st.metric("Completion Rate", f"{s['completion_rate_pct']}%")
             with c7:
                 st.metric("Deadline Miss", f"{s['deadline_miss_rate_pct']}%")
             with c8:
-                st.metric("Algorithm", s["algorithm"])
+                st.metric("Peak Waiting Queue", resource_summary["peak_queue_length"])
             with c9:
+                st.metric("Algorithm", s["algorithm"])
+            with c10:
                 st.metric("Load Imbalance", f"{s['load_imbalance']:.2f}")
 
         elif st.session_state.comparison_results:
@@ -508,6 +511,33 @@ with tab_results:
         )
         fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Count")
         st.plotly_chart(fig, use_container_width=True)
+
+        # Module 3: Resource queue and bottleneck monitoring
+        st.markdown("---")
+        st.subheader("Resource Management Monitor")
+        resource_manager = result["resource_manager"]
+        resource_summary = resource_manager.summary()
+        q1, q2, q3 = st.columns(3)
+        q1.metric("Tasks that entered queue", resource_summary["queued_total"])
+        q2.metric("Peak queue length", resource_summary["peak_queue_length"])
+        q3.metric("Bottleneck samples", resource_summary["bottleneck_event_count"])
+
+        queue_df = pd.DataFrame(resource_manager.queue_history)
+        if not queue_df.empty:
+            queue_fig = px.area(
+                queue_df, x="time", y="queue_length",
+                title="Waiting Queue Length Over Simulation Time",
+            )
+            queue_fig.update_layout(xaxis_title="Simulation Time (s)",
+                                    yaxis_title="Queued Tasks")
+            st.plotly_chart(queue_fig, use_container_width=True)
+
+        bottleneck_df = pd.DataFrame(resource_manager.bottleneck_events)
+        if not bottleneck_df.empty:
+            st.markdown("**Detected resource bottlenecks (CPU/RAM ≥ 80% or all VMs busy)**")
+            st.dataframe(bottleneck_df, use_container_width=True, height=220)
+        else:
+            st.success("No resource bottlenecks detected during this run.")
 
         # Task timeline
         st.subheader("Task Execution Timeline")

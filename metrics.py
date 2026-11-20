@@ -85,6 +85,9 @@ class MetricsCalculator:
     def pending_count(self) -> int:
         return sum(1 for t in self.tasks if t.status == TaskStatus.PENDING)
 
+    def queued_count(self) -> int:
+        return sum(1 for t in self.tasks if t.status == TaskStatus.QUEUED)
+
     def completion_rate(self) -> float:
         """Fraction of tasks that completed successfully."""
         total = len(self.tasks)
@@ -162,6 +165,7 @@ class MetricsCalculator:
             "failed": self.failed_count(),
             "rejected": self.rejected_count(),
             "pending": self.pending_count(),
+            "queued": self.queued_count(),
             "completion_rate_pct": round(self.completion_rate() * 100, 2),
             "avg_response_time": round(self.avg_response_time(), 4),
             "avg_execution_time": round(self.avg_execution_time(), 4),

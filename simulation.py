@@ -35,6 +35,7 @@ from task import Task, TaskStatus
 from task_generator import TaskGenerator
 from load_balancer import create_balancer
 from metrics import MetricsCalculator
+from resource_manager import ResourceManager
 from config import (
     FOG_NODE_DEFAULTS, CLOUD_SERVER_DEFAULT,
     SIMULATION_DEFAULTS, TASK_DEFAULTS, ADAPTIVE_WEIGHTS,
@@ -147,6 +148,24 @@ class SimulationEngine:
         task_index = 0            # Pointer into sorted task list
         total_tasks = len(tasks)
         active_tasks = 0          # Tasks currently running
+        resource_manager = ResourceManager()
+
+        def try_schedule(task, now):
+            """Start a task immediately or place it in the waiting queue."""
+            if not resource_manager.can_ever_fit(task, nodes):
+                task.status = TaskStatus.REJECTED
+                task.rejection_reason = "Task exceeds every VM capacity"
+                return
+
+            selected_node = balancer.assign(task, nodes)
+            if selected_node is not None and selected_node.assign_task(task, now):
+                latency_offset = selected_node.network_latency / 1000.0
+                task.remaining_workload += (
+                    latency_offset * selected_node.processing_speed
+                    * task.cpu_required * 100
+                )
+            else:
+                resource_manager.enqueue(task, now)
 
         start_wall = wall_time.time()
 
@@ -158,44 +177,36 @@ class SimulationEngine:
                 if task.arrival_time > current_time:
                     break  # This task hasn't arrived yet
 
-                # Try to assign via the load balancer
-                selected_node = balancer.assign(task, nodes)
-
-                if selected_node is not None:
-                    success = selected_node.assign_task(task, current_time)
-                    if success:
-                        # Add network latency to the effective start
-                        # (simulates the delay of sending data to the node)
-                        latency_offset = selected_node.network_latency / 1000.0
-                        # We model latency as added to execution time
-                        task.remaining_workload += (
-                            latency_offset
-                            * selected_node.processing_speed
-                            * task.cpu_required * 100
-                        )
-                        active_tasks += 1
-                    else:
-                        # Node said it could accept but assign failed (race)
-                        task.status = TaskStatus.REJECTED
-                else:
-                    # No node can handle this task
-                    task.status = TaskStatus.REJECTED
-
+                try_schedule(task, current_time)
                 task_index += 1
 
-            # (b) Advance all nodes by one tick
+            # (b) Expire overdue queued tasks, then retry the queue in FIFO order.
+            resource_manager.expire_overdue(current_time)
+            for queued_task in list(resource_manager.waiting_queue):
+                selected_node = balancer.assign(queued_task, nodes)
+                if selected_node is not None and selected_node.assign_task(queued_task, current_time):
+                    latency_offset = selected_node.network_latency / 1000.0
+                    queued_task.remaining_workload += (
+                        latency_offset * selected_node.processing_speed
+                        * queued_task.cpu_required * 100
+                    )
+                    resource_manager.waiting_queue.remove(queued_task)
+
+            # (c) Advance all nodes by one tick
             for node in nodes:
                 node.tick(self.time_step, current_time)
 
-            # (c) Count active tasks
+            resource_manager.record_snapshot(current_time, nodes)
+
+            # (d) Count active tasks
             active_tasks = sum(node.active_task_count for node in nodes)
 
-            # (d) Check termination: all tasks processed and none running
+            # (e) Stop only when every task has arrived, run, or left the queue.
             all_arrived = task_index >= total_tasks
-            if all_arrived and active_tasks == 0:
+            if all_arrived and active_tasks == 0 and not resource_manager.waiting_queue:
                 break
 
-            # (e) Progress callback for UI
+            # (f) Progress callback for UI
             if progress_callback:
                 progress_callback(current_time, self.max_time, tasks)
 
@@ -208,10 +219,12 @@ class SimulationEngine:
         for node in nodes:
             node.update_task_counts(tasks)
 
-        # Mark any still-pending tasks as rejected (simulation ended)
+        # Mark unfinished work as failed if the simulation time limit is reached.
         for task in tasks:
-            if task.status == TaskStatus.PENDING:
-                task.status = TaskStatus.REJECTED
+            if task.status in (TaskStatus.PENDING, TaskStatus.QUEUED):
+                task.status = TaskStatus.FAILED
+                task.end_time = current_time
+                task.rejection_reason = task.rejection_reason or "Simulation time limit reached"
             elif task.status == TaskStatus.RUNNING:
                 task.end_time = current_time
                 task.status = TaskStatus.FAILED
@@ -230,6 +243,7 @@ class SimulationEngine:
             "metrics": metrics,
             "algorithm": algorithm_name,
             "wall_time": round(end_wall - start_wall, 4),
+            "resource_manager": resource_manager,
         }
 
     # ------------------------------------------------------------------
