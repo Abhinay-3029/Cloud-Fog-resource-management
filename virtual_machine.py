@@ -40,6 +40,9 @@ class VirtualMachine:
         self.cpu_allocated = cpu_allocated      # Total CPU this VM can use
         self.ram_allocated = ram_allocated      # Total RAM this VM can use
         self.processing_speed = processing_speed
+        self.is_dynamic = False
+        self.migration_count = 0
+        self.scale_count = 0
 
         # Current resource usage
         self.cpu_used = 0.0
@@ -171,13 +174,20 @@ class VirtualMachine:
     # Future extension stubs
     # ------------------------------------------------------------------
 
-    def migrate_to(self, target_node):
-        """Placeholder for VM live-migration (future work)."""
-        raise NotImplementedError("VM migration not yet implemented.")
+    def migrate_to(self, source_node, target_node):
+        """Move this VM to target_node while preserving its running task."""
+        return source_node.migrate_vm_to(self, target_node)
 
     def scale_resources(self, new_cpu: float, new_ram: float):
-        """Placeholder for vertical scaling (future work)."""
-        raise NotImplementedError("VM scaling not yet implemented.")
+        """Apply a resource allocation validated by the host node."""
+        if new_cpu <= 0 or new_ram <= 0:
+            raise ValueError("VM CPU and RAM allocations must be positive.")
+        if new_cpu < self.cpu_used or new_ram < self.ram_used:
+            raise ValueError("Cannot scale below resources currently used by a task.")
+        self.cpu_allocated = float(new_cpu)
+        self.ram_allocated = float(new_ram)
+        self.scale_count += 1
+        return True
 
     # ------------------------------------------------------------------
     # Representation

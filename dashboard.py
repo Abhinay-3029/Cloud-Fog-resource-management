@@ -299,9 +299,9 @@ st.markdown("---")
 # TABS
 # ======================================================================
 
-tab_overview, tab_infra, tab_results, tab_compare, tab_export = st.tabs([
+tab_overview, tab_infra, tab_results, tab_compare, tab_orchestration, tab_export = st.tabs([
     "📊 Overview", "🖥️ Infrastructure", "📈 Results",
-    "🔬 Comparison", "💾 Export"
+    "🔬 Comparison", "⚙️ VM Orchestration", "💾 Export"
 ])
 
 
@@ -402,6 +402,7 @@ with tab_infra:
                             f"({nd['ram_utilization']}%)")
                 st.markdown(f"**VMs:** {nd['total_vms'] - nd['idle_vms']}"
                             f"/{nd['total_vms']} busy")
+                st.markdown(f"**Dynamic VMs:** {nd.get('dynamic_vms', 0)}")
                 st.markdown(f"**Tasks:** {nd['tasks_assigned']} assigned, "
                             f"{nd['tasks_completed']} done")
                 st.markdown(f"**Latency:** {node.network_latency} ms")
@@ -704,6 +705,54 @@ with tab_compare:
         )
         fig.update_layout(showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
+
+
+# ======================================================================
+# TAB 5: VM Orchestration
+# ======================================================================
+
+with tab_orchestration:
+    result = st.session_state.simulation_results
+    if result is None:
+        st.info("Run a single simulation to inspect VM orchestration activity.")
+    else:
+        orchestrator = result["vm_orchestrator"]
+        summary = orchestrator.summary()
+        st.subheader("Dynamic VM Orchestration")
+        st.caption("The orchestrator reallocates simulated host CPU/RAM; it does not launch real hypervisor VMs.")
+        cards = st.columns(5)
+        labels = [("VMs Created", "created"), ("VMs Terminated", "terminated"),
+                  ("Scaled Up", "scaled_up"), ("Scaled Down", "scaled_down"),
+                  ("VM Migrations", "migrated")]
+        for col, (label, key) in zip(cards, labels):
+            col.metric(label, summary[key])
+
+        vm_rows = []
+        for node in result["nodes"]:
+            for vm in node.vms:
+                vm_rows.append({
+                    "Node": node.name, "VM ID": vm.vm_id,
+                    "Type": "Dynamic" if vm.is_dynamic else "Initial",
+                    "CPU Allocated": round(vm.cpu_allocated, 2),
+                    "RAM Allocated (GB)": round(vm.ram_allocated, 2),
+                    "Status": "Busy" if not vm.is_idle else "Idle",
+                    "CPU Used": round(vm.cpu_used, 2),
+                    "RAM Used (GB)": round(vm.ram_used, 2),
+                    "Migrations": vm.migration_count,
+                    "Scale Operations": vm.scale_count,
+                })
+        st.markdown("#### Current VM Inventory")
+        st.dataframe(pd.DataFrame(vm_rows), use_container_width=True, hide_index=True)
+
+        st.markdown("#### Orchestration Event Log")
+        if orchestrator.events:
+            events_df = pd.DataFrame(orchestrator.events)
+            st.dataframe(events_df, use_container_width=True, hide_index=True)
+            event_counts = events_df["action"].value_counts().rename_axis("Action").reset_index(name="Count")
+            fig = px.bar(event_counts, x="Action", y="Count", title="Orchestration Actions")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No orchestration action was triggered in this run. Try a High workload or increase task count to create queue pressure.")
 
 
 # ======================================================================

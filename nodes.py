@@ -69,6 +69,10 @@ class Node:
             )
             self.vms.append(vm)
 
+        self._next_vm_id = num_vms
+        self.initial_vm_count = num_vms
+        self.orchestration_history = []
+
         # --- Bookkeeping -----------------------------------------------
         self.tasks_assigned = 0       # Total tasks ever assigned
         self.tasks_completed = 0      # Successfully finished
@@ -137,6 +141,94 @@ class Node:
     def is_overloaded(self) -> bool:
         """True if all VMs are busy or resources are nearly exhausted."""
         return self.idle_vm_count == 0 or self.cpu_utilization > 0.95
+
+
+    @property
+    def allocated_cpu(self):
+        return sum(vm.cpu_allocated for vm in self.vms)
+
+    @property
+    def allocated_ram(self):
+        return sum(vm.ram_allocated for vm in self.vms)
+
+    @property
+    def unallocated_cpu(self):
+        return max(0.0, self.cpu_capacity - self.allocated_cpu)
+
+    @property
+    def unallocated_ram(self):
+        return max(0.0, self.ram_capacity - self.allocated_ram)
+
+    def create_vm(self, cpu, ram, dynamic=True):
+        """Create a VM using unallocated host resources or by splitting one idle VM."""
+        cpu, ram = float(cpu), float(ram)
+        donor = None
+        if self.unallocated_cpu + 1e-9 < cpu or self.unallocated_ram + 1e-9 < ram:
+            donor = next((vm for vm in self.vms if vm.is_idle
+                          and vm.cpu_allocated - cpu >= 0.25
+                          and vm.ram_allocated - ram >= 0.25), None)
+            if donor is None:
+                return None
+            donor.cpu_allocated -= cpu
+            donor.ram_allocated -= ram
+        vm = VirtualMachine(self._next_vm_id, cpu, ram, self.processing_speed)
+        vm.is_dynamic = dynamic
+        self._next_vm_id += 1
+        self.vms.append(vm)
+        return vm
+
+    def scale_vm(self, vm, new_cpu, new_ram):
+        """Resize a VM, borrowing from an idle donor or releasing host capacity."""
+        if vm not in self.vms:
+            return False
+        new_cpu, new_ram = float(new_cpu), float(new_ram)
+        delta_cpu = new_cpu - vm.cpu_allocated
+        delta_ram = new_ram - vm.ram_allocated
+        if delta_cpu > 0 or delta_ram > 0:
+            donor = next((other for other in self.vms if other is not vm and other.is_idle
+                          and other.cpu_allocated - max(delta_cpu, 0) >= 0.25
+                          and other.ram_allocated - max(delta_ram, 0) >= 0.25), None)
+            if self.unallocated_cpu + 1e-9 < max(delta_cpu, 0) or self.unallocated_ram + 1e-9 < max(delta_ram, 0):
+                if donor is None:
+                    return False
+                donor.cpu_allocated -= max(delta_cpu, 0)
+                donor.ram_allocated -= max(delta_ram, 0)
+        try:
+            vm.scale_resources(new_cpu, new_ram)
+        except ValueError:
+            return False
+        return True
+
+    def remove_vm(self, vm):
+        """Terminate an idle VM and release its allocation to the host."""
+        if vm not in self.vms or not vm.is_idle or len(self.vms) <= 1:
+            return False
+        self.vms.remove(vm)
+        return True
+
+    def migrate_vm_to(self, vm, target_node):
+        """Migrate a VM (including an active task) to another node."""
+        if vm not in self.vms or target_node is self:
+            return False
+        target_donor = next((other for other in target_node.vms if other.is_idle
+                             and other.cpu_allocated - vm.cpu_allocated >= 0.25
+                             and other.ram_allocated - vm.ram_allocated >= 0.25), None)
+        if (target_node.unallocated_cpu + 1e-9 < vm.cpu_allocated or
+                target_node.unallocated_ram + 1e-9 < vm.ram_allocated):
+            if target_donor is None:
+                return False
+            target_donor.cpu_allocated -= vm.cpu_allocated
+            target_donor.ram_allocated -= vm.ram_allocated
+        self.vms.remove(vm)
+        vm.vm_id = target_node._next_vm_id
+        target_node._next_vm_id += 1
+        vm.processing_speed = target_node.processing_speed
+        vm.migration_count += 1
+        target_node.vms.append(vm)
+        if vm.current_task is not None:
+            vm.current_task.assigned_node = target_node.name
+            vm.current_task.assigned_vm_id = vm.vm_id
+        return True
 
     # ------------------------------------------------------------------
     # Task operations
@@ -242,6 +334,10 @@ class Node:
             "tasks_completed": self.tasks_completed,
             "tasks_failed": self.tasks_failed,
             "is_overloaded": self.is_overloaded,
+            "initial_vms": self.initial_vm_count,
+            "dynamic_vms": sum(1 for vm in self.vms if vm.is_dynamic),
+            "unallocated_cpu": round(self.unallocated_cpu, 2),
+            "unallocated_ram": round(self.unallocated_ram, 2),
         }
 
     def __repr__(self):

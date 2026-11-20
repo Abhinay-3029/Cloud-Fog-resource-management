@@ -49,6 +49,13 @@ def print_summary(result: dict):
     print(f"  Load Imbalance:     {s['load_imbalance']:.4f}")
     print(f"  Simulation Time:    {s['total_execution_time']:.2f} s (simulated)")
     print(f"  Wall-Clock Time:    {result['wall_time']:.4f} s (real)")
+    orch = result.get("vm_orchestrator")
+    if orch:
+        osum = orch.summary()
+        print("\n  VM Orchestration:")
+        print(f"    Created: {osum['created']} | Terminated: {osum['terminated']}")
+        print(f"    Scaled up: {osum['scaled_up']} | Scaled down: {osum['scaled_down']}")
+        print(f"    Migrated: {osum['migrated']}")
 
     print(f"\n  CPU Utilisation:")
     for name, util in s["cpu_utilization"].items():

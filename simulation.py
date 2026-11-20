@@ -36,6 +36,7 @@ from task_generator import TaskGenerator
 from load_balancer import create_balancer
 from metrics import MetricsCalculator
 from resource_manager import ResourceManager
+from vm_orchestrator import VMOrchestrator
 from config import (
     FOG_NODE_DEFAULTS, CLOUD_SERVER_DEFAULT,
     SIMULATION_DEFAULTS, TASK_DEFAULTS, ADAPTIVE_WEIGHTS,
@@ -149,6 +150,7 @@ class SimulationEngine:
         total_tasks = len(tasks)
         active_tasks = 0          # Tasks currently running
         resource_manager = ResourceManager()
+        vm_orchestrator = VMOrchestrator()
 
         def try_schedule(task, now):
             """Start a task immediately or place it in the waiting queue."""
@@ -180,7 +182,10 @@ class SimulationEngine:
                 try_schedule(task, current_time)
                 task_index += 1
 
-            # (b) Expire overdue queued tasks, then retry the queue in FIFO order.
+            # (b) Orchestrate VMs in response to queue pressure and utilization.
+            vm_orchestrator.step(current_time, nodes, resource_manager.waiting_queue)
+
+            # (c) Expire overdue queued tasks, then retry the queue in FIFO order.
             resource_manager.expire_overdue(current_time)
             for queued_task in list(resource_manager.waiting_queue):
                 selected_node = balancer.assign(queued_task, nodes)
@@ -192,27 +197,28 @@ class SimulationEngine:
                     )
                     resource_manager.waiting_queue.remove(queued_task)
 
-            # (c) Advance all nodes by one tick
+            # (d) Advance all nodes by one tick
             for node in nodes:
                 node.tick(self.time_step, current_time)
 
             resource_manager.record_snapshot(current_time, nodes)
 
-            # (d) Count active tasks
+            # (e) Count active tasks
             active_tasks = sum(node.active_task_count for node in nodes)
 
-            # (e) Stop only when every task has arrived, run, or left the queue.
+            # (f) Stop only when every task has arrived, run, or left the queue.
             all_arrived = task_index >= total_tasks
             if all_arrived and active_tasks == 0 and not resource_manager.waiting_queue:
                 break
 
-            # (f) Progress callback for UI
+            # (g) Progress callback for UI
             if progress_callback:
                 progress_callback(current_time, self.max_time, tasks)
 
             current_time = round(current_time + self.time_step, 4)
 
         # --- Post-processing ---
+        vm_orchestrator.finalize(current_time, nodes)
         end_wall = wall_time.time()
 
         # Update node task counts from actual task statuses
@@ -244,6 +250,7 @@ class SimulationEngine:
             "algorithm": algorithm_name,
             "wall_time": round(end_wall - start_wall, 4),
             "resource_manager": resource_manager,
+            "vm_orchestrator": vm_orchestrator,
         }
 
     # ------------------------------------------------------------------
