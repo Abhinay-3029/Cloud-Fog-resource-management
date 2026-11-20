@@ -1,0 +1,4 @@
+algorithm,total_tasks,completed,failed,rejected,pending,completion_rate_pct,avg_response_time,avg_execution_time,total_execution_time,deadline_miss_rate_pct,load_imbalance,cpu_util_Fog-Node-1,cpu_util_Fog-Node-2,cpu_util_Fog-Node-3,cpu_util_Cloud-Server,ram_util_Fog-Node-1,ram_util_Fog-Node-2,ram_util_Fog-Node-3,ram_util_Cloud-Server,tasks_Fog-Node-1,tasks_Fog-Node-2,tasks_Fog-Node-3,tasks_Cloud-Server,tasks_Rejected
+Round Robin,200,133,0,67,0,66.5,1.1307,1.0812,14.2,0.0,21.9018,38.2,23.66,45.45,22.44,38.16,15.32,36.06,9.83,20,8,39,66,67
+Least Loaded,200,133,0,67,0,66.5,1.174,1.1226,14.2,0.0,20.8851,34.88,34.27,44.9,21.09,36.78,25.74,36.19,10.31,15,14,39,65,67
+Adaptive,200,130,0,70,0,65.0,1.2127,1.1615,14.2,0.0,19.4743,34.18,34.27,45.8,20.67,34.59,25.74,39.04,10.92,15,14,40,61,70
