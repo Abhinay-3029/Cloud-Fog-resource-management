@@ -77,9 +77,9 @@ PALETTES = {
     },
 }
 
-# ======================================================================
+# 
 # Session State Initialisation
-# ======================================================================
+# 
 
 if "simulation_results" not in st.session_state:
     st.session_state.simulation_results = None
@@ -90,9 +90,9 @@ if "run_count" not in st.session_state:
 if "active_module" not in st.session_state:
     st.session_state.active_module = "Cluster & Node Matrix"
 
-# ======================================================================
+# 
 # Top Brand Ribbon + Live Theme Switcher
-# ======================================================================
+# 
 
 hdr_left, hdr_right = st.columns([3.4, 1.1])
 with hdr_right:
@@ -105,9 +105,9 @@ with hdr_right:
 
 T = PALETTES[selected_theme]
 
-# ======================================================================
+# 
 # Global CSS Styling
-# ======================================================================
+# 
 
 st.markdown(f"""
 <style>
@@ -365,9 +365,9 @@ def style_fig(fig, height=340):
     return fig
 
 
-# ======================================================================
+# 
 # ZONE 1: Top Horizontal Control Dock
-# ======================================================================
+# 
 
 with st.container(border=True):
     c_p1, c_p2, c_p3, c_p4, c_p5, c_p6, c_p7 = st.columns([1.15, 1.25, 1.25, 0.75, 0.95, 1.05, 0.75])
@@ -485,9 +485,9 @@ with st.container(border=True):
                 "w_speed": w_speed,
             }
 
-# ======================================================================
+# 
 # Build & Execute Simulation Engine
-# ======================================================================
+# 
 
 task_config = {
     "cpu_range": (cpu_min, cpu_max),
@@ -519,9 +519,9 @@ if run_compare:
 
 res = st.session_state.simulation_results
 
-# ======================================================================
+# 
 # ZONE 2: 5-Card Bento KPI Strip
-# ======================================================================
+# 
 
 if res:
     s = res["metrics"].summary()
@@ -592,15 +592,15 @@ if res:
 
     st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
-# ======================================================================
+# 
 # ZONE 3: Left Navigation Rail + Right Dynamic Workspace Stage
-# ======================================================================
+# 
 
 rail_col, stage_col = st.columns([1, 3.2], gap="medium")
 
-# ----------------------------------------------------------------------
+# 
 # LEFT RAIL: Module Switcher + Live Node Pulse + Quick Exports
-# ----------------------------------------------------------------------
+# 
 with rail_col:
     st.markdown('<div class="rail-card">', unsafe_allow_html=True)
     st.markdown('<div class="rail-title">Workspace Views</div>', unsafe_allow_html=True)
@@ -740,7 +740,7 @@ with stage_col:
 
                         fig_g = go.Figure(go.Indicator(
                             mode="gauge+number",
-                            value=nd["cpu_utilization"],
+                            value=nd["avg_cpu_utilization"],
                             number={"suffix": "%", "font": {"size": 20}},
                             title={"text": "CPU Load", "font": {"size": 11}},
                             gauge={
@@ -775,20 +775,19 @@ with stage_col:
                     util_rows = []
                     for node in nodes:
                         nd = node.to_dict()
-                        util_rows.append({"Node": nd["name"], "Resource": "CPU (%)", "Utilization": nd["cpu_utilization"]})
-                        util_rows.append({"Node": nd["name"], "Resource": "RAM (%)", "Utilization": nd["ram_utilization"]})
+                        util_rows.append({"Node": nd["name"], "Resource": "CPU (%)", "Utilization": nd["avg_cpu_utilization"]})
+                        util_rows.append({"Node": nd["name"], "Resource": "RAM (%)", "Utilization": nd["avg_ram_utilization"]})
                     fig_u = px.bar(
                         pd.DataFrame(util_rows),
                         x="Node", y="Utilization", color="Resource",
-                        barmode="group", title="Final CPU vs RAM Utilization by Node",
+                        barmode="group", title="Average CPU vs RAM Utilization by Node",
                         color_discrete_sequence=[T["primary"], T["secondary"]],
                     )
                     fig_u.update_layout(yaxis=dict(range=[0, 105]))
                     st.plotly_chart(style_fig(fig_u, height=320), use_container_width=True)
 
-        # ==============================================================
         # MODULE 2: Execution & Queue Analytics
-        # ==============================================================
+        
         elif chosen_module == "Execution & Queue Analytics":
             st.markdown('<div class="stage-header">Task Execution, Latency & Queue Contention Analytics</div>', unsafe_allow_html=True)
 

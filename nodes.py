@@ -21,6 +21,7 @@ Design note: the base class is kept generic so that future extensions
 
 from virtual_machine import VirtualMachine
 from task import Task
+import numpy as np
 
 
 class Node:
@@ -230,9 +231,9 @@ class Node:
             vm.current_task.assigned_vm_id = vm.vm_id
         return True
 
-    # ------------------------------------------------------------------
+    # 
     # Task operations
-    # ------------------------------------------------------------------
+    # 
 
     def can_accept(self, task: Task) -> bool:
         """
@@ -293,9 +294,9 @@ class Node:
             if t.assigned_node == self.name and t.status == "FAILED"
         )
 
-    # ------------------------------------------------------------------
+    # 
     # Reset (for running multiple algorithms on the same infrastructure)
-    # ------------------------------------------------------------------
+    # 
 
     def reset(self):
         """
@@ -322,6 +323,8 @@ class Node:
             "type": self.node_type,
             "cpu_capacity": self.cpu_capacity,
             "ram_capacity": self.ram_capacity,
+            "avg_cpu_utilization": round(float(np.mean(self.cpu_history)) * 100, 1) if self.cpu_history else 0.0,
+            "avg_ram_utilization": round(float(np.mean(self.ram_history)) * 100, 1) if self.ram_history else 0.0,
             "cpu_used": round(self.cpu_used, 2),
             "ram_used": round(self.ram_used, 2),
             "cpu_utilization": round(self.cpu_utilization * 100, 1),
