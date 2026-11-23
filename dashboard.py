@@ -1,11 +1,3 @@
-"""
-dashboard.py — Cloud-Fog Resource Management Console
-====================================================
-Enterprise Bento-grid web dashboard for the Cloud-Fog simulation.
-
-Launch with:
-    streamlit run dashboard.py
-"""
 
 import os
 import pandas as pd
@@ -21,19 +13,18 @@ from config import (
     SIMULATION_DEFAULTS, EXPERIMENT_PRESETS,
 )
 
-# ======================================================================
+
 # Page Configuration
-# ======================================================================
+
 
 st.set_page_config(
-    page_title="Cloud-Fog Resource Management Console",
+    page_title="Cloud-Fog Resource Management Simulator",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# ======================================================================
 # 3 Color Palettes (Default matches .streamlit/config.toml)
-# ======================================================================
+
 
 PALETTES = {
     "Teal Slate (Light)": {
@@ -354,7 +345,7 @@ with hdr_left:
     <div class="brand-banner">
         <div class="brand-bar"></div>
         <div>
-            <h1 class="brand-name">Cloud-Fog Resource Management Console</h1>
+            <h1 class="brand-name">Cloud-Fog Resource Management Simulator</h1>
             <p class="brand-desc">Adaptive Load Balancing, Bottleneck Telemetry & Dynamic VM Orchestration</p>
         </div>
     </div>
@@ -1094,7 +1085,7 @@ with stage_col:
 
 st.markdown(
     f"<div style='text-align: center; color: {T['text_secondary']}; font-size: 12px; margin-top: 18px;'>"
-    "Cloud-Fog Resource Management Simulator — B.Tech Major Project"
+    "Cloud-Fog Resource Management Simulator"
     "</div>",
     unsafe_allow_html=True,
 )
