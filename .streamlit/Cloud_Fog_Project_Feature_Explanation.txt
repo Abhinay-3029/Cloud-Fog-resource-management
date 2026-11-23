@@ -1,0 +1,828 @@
+CLOUD-FOG RESOURCE MANAGEMENT WITH LOAD BALANCING AND VM ORCHESTRATION
+COMPLETE FEATURE EXPLANATION
+======================================================================
+
+1. WHAT THIS PROJECT DOES
+-------------------------
+This project is a Python simulation of a hybrid cloud-fog computing
+environment.
+
+Fog computing means placing computing resources closer to users or
+devices. These resources can provide lower network latency, but they
+usually have less CPU and RAM than a large cloud data centre.
+
+Cloud computing provides larger shared computing resources, but a remote
+cloud server can introduce more network delay.
+
+The project creates three simulated fog nodes and one simulated cloud
+server. Each node contains virtual machines (VMs). Random computational
+tasks arrive over time. A load-balancing algorithm chooses a suitable
+node, a VM executes the task, and the simulator tracks resource usage,
+waiting tasks, deadlines, and performance.
+
+IMPORTANT:
+Everything is simulated in Python. The program does not create real
+Windows/Linux virtual machines, does not connect to AWS/Azure/GCP, and
+does not control a real hypervisor.
+
+2. INFRASTRUCTURE: FOG NODES AND CLOUD SERVER
+---------------------------------------------
+The infrastructure consists of four host nodes.
+
+FOG-NODE-1
+- CPU capacity: 8 cores
+- RAM capacity: 16 GB
+- Processing speed: 2.5 GHz
+- Network latency: 5 ms
+- Initial VMs: 5
+
+FOG-NODE-2
+- CPU capacity: 6 cores
+- RAM capacity: 12 GB
+- Processing speed: 2.0 GHz
+- Network latency: 8 ms
+- Initial VMs: 5
+
+FOG-NODE-3
+- CPU capacity: 10 cores
+- RAM capacity: 20 GB
+- Processing speed: 3.0 GHz
+- Network latency: 10 ms
+- Initial VMs: 5
+
+CLOUD-SERVER
+- CPU capacity: 32 cores
+- RAM capacity: 64 GB
+- Processing speed: 3.5 GHz
+- Network latency: 50 ms
+- Initial VMs: 5
+
+What each property means:
+- CPU capacity: total CPU cores available on the host node.
+- RAM capacity: total memory available on the host node.
+- Processing speed: modeled CPU speed; higher speed contributes to
+  faster simulated task processing.
+- Network latency: modeled communication delay in milliseconds.
+- Initial VMs: number of VMs created when the infrastructure is built.
+
+The fog nodes have lower latency than the cloud server. The cloud server
+has substantially more CPU and RAM. This allows the project to model
+the trade-off between proximity and computing capacity.
+
+3. VIRTUAL MACHINES (VMs)
+-------------------------
+A VM is the simulated execution unit hosted by a node.
+
+Each VM has:
+- A VM ID.
+- Allocated CPU.
+- Allocated RAM.
+- CPU and RAM currently used by its active task.
+- Idle/busy state.
+- Dynamic/initial classification.
+- Migration count.
+- Scaling-operation count.
+
+A VM can accept a task only when it has enough available CPU and RAM.
+When a task is assigned, the VM reserves the task's CPU and RAM
+requirements. When the task finishes or fails, the resources are
+released so another task can use the VM.
+
+Initial VM:
+A VM created when the node is initialized.
+
+Dynamic VM:
+A VM created later by the VM orchestrator in response to demand.
+
+Idle VM:
+A VM that is not currently executing a task.
+
+Busy VM:
+A VM currently executing a task.
+
+4. TASK GENERATION
+------------------
+The TaskGenerator creates synthetic tasks using a random number
+generator.
+
+Every task has:
+- Task ID: unique task number.
+- CPU requirement: number of CPU cores required.
+- RAM requirement: memory required in GB.
+- Workload: amount of computation in Million Instructions (MI).
+- Deadline: maximum allowed time from arrival to completion.
+- Arrival time: simulated time when the task enters the system.
+
+Default task settings:
+- 200 tasks.
+- CPU requirement: 1 to 4 cores.
+- RAM requirement: 0.5 to 4 GB.
+- Workload: 100 to 1,000 MI.
+- Deadline: 5 to 30 seconds.
+- Arrival spread: 10 seconds.
+
+Tasks are sorted by arrival time before simulation. The random seed
+makes the same task set reproducible when the same configuration and
+seed are used.
+
+5. WORKLOAD PRESETS
+-------------------
+The project includes three predefined workload profiles.
+
+LOW WORKLOAD
+- 100 tasks.
+- CPU: 1–2 cores.
+- RAM: 0.5–2 GB.
+- Workload: 100–500 MI.
+- Deadline: 10–30 seconds.
+- Arrival spread: 15 seconds.
+
+Purpose: models a relatively light workload with smaller tasks and
+more generous deadlines.
+
+MEDIUM WORKLOAD
+- 250 tasks.
+- CPU: 1–4 cores.
+- RAM: 0.5–4 GB.
+- Workload: 200–800 MI.
+- Deadline: 5–25 seconds.
+- Arrival spread: 10 seconds.
+
+Purpose: models a moderate workload with a mix of task sizes.
+
+HIGH WORKLOAD
+- 500 tasks.
+- CPU: 2–6 cores.
+- RAM: 1–6 GB.
+- Workload: 500–1,500 MI.
+- Deadline: 3–15 seconds.
+- Arrival spread: 5 seconds.
+
+Purpose: creates heavier and more closely spaced task arrivals. It is
+useful for observing queue pressure and possible VM orchestration.
+
+A preset does not guarantee a particular orchestration event. The
+actual events depend on the generated tasks and current simulated
+resource state.
+
+6. LOAD BALANCING
+-----------------
+Load balancing is the process of choosing where a new task should run.
+
+This project implements three algorithms.
+
+6.1 ROUND ROBIN
+The algorithm rotates through nodes in a fixed cyclic order.
+
+Example:
+Task 1 -> Node 1
+Task 2 -> Node 2
+Task 3 -> Node 3
+Task 4 -> Cloud
+Task 5 -> Node 1
+...and so on.
+
+If the selected node cannot accept the task, the algorithm checks the
+next node. It tries each node at most once for that scheduling attempt.
+
+What it does:
+- Distributes selection opportunities in a rotating order.
+- Does not calculate a resource-performance score.
+- Uses node eligibility checks to avoid assigning a task to a node that
+  cannot currently accept it.
+
+Advantage:
+Simple and low overhead.
+
+Disadvantage:
+The rotation itself does not consider which node is busiest, faster,
+or closer to the user.
+
+6.2 LEAST LOADED
+This algorithm selects the node with the lowest workload ratio.
+
+Workload ratio is the fraction of VMs that are busy:
+busy VMs / total VMs.
+
+Nodes are sorted by:
+1. Lowest workload ratio.
+2. Highest available CPU when workload ratios tie.
+
+The algorithm checks nodes in this order and chooses the first one
+that can accept the task.
+
+What it does:
+- Reacts to current VM activity.
+- Tries to avoid sending more tasks to a node with many busy VMs.
+- Uses available CPU as a tie-breaker.
+
+Advantage:
+More aware of current load than Round Robin.
+
+Disadvantage:
+Its ranking does not directly account for network latency or
+processing speed.
+
+6.3 ADAPTIVE
+This is the project's multi-factor weighted scheduling heuristic.
+
+It scores each node that can currently accept the task. The highest
+score wins.
+
+Score formula:
+
+score =
+  CPU weight      * (1 - CPU utilization)
++ RAM weight      * (1 - RAM utilization)
++ Workload weight * (1 - workload ratio)
++ Latency weight  * (1 - normalized latency)
++ Speed weight    * normalized processing speed
+
+Default weights:
+- CPU: 0.30
+- RAM: 0.25
+- Workload: 0.20
+- Latency: 0.15
+- Speed: 0.10
+Total: 1.00
+
+Meaning:
+- A node with more free CPU gets a better CPU contribution.
+- A node with more free RAM gets a better RAM contribution.
+- A node with fewer busy VMs gets a better workload contribution.
+- A node with lower network latency gets a better latency contribution.
+- A node with higher processing speed gets a better speed contribution.
+
+Latency and speed are normalized relative to the nodes in the current
+infrastructure.
+
+Advantage:
+Considers resource availability, current load, latency, and speed
+together.
+
+Disadvantage:
+Its behavior depends on the chosen weights. The implementation is a
+weighted heuristic, not a claim that the algorithm is globally optimal
+or scientifically novel.
+
+7. RESOURCE ELIGIBILITY: CAN A NODE ACCEPT A TASK?
+--------------------------------------------------
+Before a task is assigned, the node/VM capacity is checked.
+
+A task needs enough CPU and RAM. A VM that does not have sufficient
+available resources cannot accept it.
+
+There are two different situations:
+
+A. The task can never fit:
+No VM in the infrastructure has configured CPU and RAM allocations
+large enough for the task. The task is marked REJECTED.
+
+B. The task could fit, but resources are busy right now:
+The task is placed in the waiting queue and retried later.
+
+This distinction is important:
+- REJECTED means the configured VM capacities cannot accommodate it.
+- QUEUED means the task may run later when resources become free.
+
+8. RESOURCE MANAGER AND FIFO WAITING QUEUE
+------------------------------------------
+The ResourceManager handles tasks that cannot start immediately.
+
+FIFO means First In, First Out: tasks are considered in the order they
+entered the waiting queue.
+
+How it works:
+1. The engine checks whether any VM could ever fit the task.
+2. If no VM can fit it, the task is rejected.
+3. If the task could fit but no VM can accept it now, it is queued.
+4. On later simulation ticks, the engine retries queued tasks.
+5. If a suitable VM becomes available, the task is assigned.
+6. The task is removed from the queue after successful assignment.
+
+The queue records:
+- Total number of tasks that entered the queue.
+- Peak queue length.
+- Current queue length.
+- Queue length at each recorded simulation time.
+
+Deadline expiry in the queue:
+A queued task's deadline is checked against its arrival time. If the
+current simulation time minus its arrival time exceeds its deadline,
+the task becomes FAILED. Its reason is recorded as:
+"Deadline expired while waiting for resources".
+
+The queue is not an unlimited solution: a task can still fail if it
+waits longer than its deadline.
+
+9. RESOURCE AND BOTTLENECK MONITORING
+-------------------------------------
+The ResourceManager records node-level bottleneck events.
+
+An event is recorded if any one of these conditions is true:
+- CPU utilization is at least 80%.
+- RAM utilization is at least 80%.
+- The node has zero idle VMs.
+
+Each event records:
+- Simulation time.
+- Node name.
+- CPU utilization percentage.
+- RAM utilization percentage.
+- Number of busy VMs.
+- Total number of VMs.
+
+This makes it possible to identify when a node is close to exhausting
+its resources or has no idle VM available.
+
+10. DYNAMIC VM ORCHESTRATION
+----------------------------
+The VMOrchestrator reacts to queue pressure and resource utilization.
+
+It supports:
+- Horizontal scaling: creating an additional VM.
+- Vertical scaling up: increasing an existing VM's allocation.
+- Vertical scaling down: reducing an idle VM's allocation.
+- VM migration: moving a VM and its active task state to another node.
+- Scale-in/termination: removing idle dynamic VMs when demand falls.
+
+The orchestrator performs at most one action per action interval.
+The default action interval is 2 simulated seconds.
+
+All these operations are simulated by reallocating CPU and RAM on
+Python node/VM objects. No real VM is launched.
+
+10.1 HORIZONTAL SCALING: CREATE VM
+When the waiting queue reaches the default threshold of 2 tasks:
+- Nodes are considered in descending workload/CPU-utilization order.
+- The orchestrator searches for an idle VM that can donate part of its
+  allocation.
+- A new dynamic VM is created from a portion of the donor's CPU/RAM.
+- The number of dynamic VMs on one node is limited by the policy to
+  fewer than two.
+
+The host's total CPU/RAM capacity is respected. Creating a VM does not
+magically add physical resources; it reallocates existing host
+capacity.
+
+10.2 VERTICAL SCALING UP
+The orchestrator can increase a busy VM's CPU and RAM allocation.
+Its policy attempts increments of:
+- 0.5 CPU
+- 0.5 GB RAM
+
+The node validates that the host has enough unallocated resources and
+that the new allocation does not violate resources currently in use.
+
+10.3 VM MIGRATION
+Migration attempts to move a busy VM from a highly loaded source node
+to a less-loaded target node.
+
+Policy:
+- Source node workload ratio must meet the high-load threshold.
+- The target should be less loaded than the source.
+- The target must have enough host CPU and RAM to accommodate the VM.
+- The VM's active task state is preserved during a successful migration.
+
+The event records the destination node and identifies the source node
+in the event details.
+
+10.4 VERTICAL SCALING DOWN
+When demand is low, the orchestrator can reduce the allocation of an
+idle VM by about 10%, subject to minimum allocation safeguards.
+
+This helps return CPU/RAM to the node's unallocated resource pool.
+
+10.5 SCALE-IN / VM TERMINATION
+When the waiting queue is empty and node workload is at or below the
+low-load threshold, the orchestrator can terminate an idle dynamic VM.
+
+At the end of the run, the finalize step also removes remaining idle
+dynamic VMs and can right-size an idle initial VM.
+
+10.6 DEFAULT ORCHESTRATION POLICY VALUES
+- Action interval: 2.0 seconds.
+- Queue scale threshold: 2 waiting tasks.
+- High-load threshold: 0.40 workload ratio.
+- Low-load threshold: 0.20 workload ratio.
+
+11. TASK LIFECYCLE AND STATUSES
+-------------------------------
+PENDING:
+Task has been generated and has not yet been scheduled.
+
+QUEUED:
+Task can fit the infrastructure, but cannot start at the moment.
+
+RUNNING:
+Task has been assigned to a VM and is executing.
+
+COMPLETED:
+Task finished its workload successfully.
+
+FAILED:
+Task missed its deadline or remained unfinished when the simulation
+reached its maximum duration.
+
+REJECTED:
+No VM's configured allocation can fit the task's CPU/RAM requirements.
+
+The main lifecycle is generally:
+PENDING -> RUNNING -> COMPLETED
+                    -> FAILED
+
+or:
+PENDING -> QUEUED -> RUNNING -> COMPLETED
+                             -> FAILED
+
+or:
+PENDING -> REJECTED
+
+12. TASK EXECUTION
+------------------
+A VM executes the active task in simulation time steps.
+
+The VM uses the task's CPU requirement, the node's processing speed,
+and the configured time step to calculate progress. The task's
+remaining workload decreases on each tick.
+
+When remaining workload reaches zero:
+- Task status becomes COMPLETED.
+- End time is recorded.
+- CPU and RAM reserved by the task are released.
+
+If the task exceeds its deadline while executing:
+- Task status becomes FAILED.
+- End time is recorded.
+- CPU and RAM are released.
+
+The simulator also adds a modeled network-latency contribution when
+the task is assigned to a node. The cloud server therefore incurs a
+larger modeled communication delay than the fog nodes by default.
+
+13. PERFORMANCE METRICS
+-----------------------
+The MetricsCalculator computes the following values.
+
+TOTAL TASKS
+Number of generated tasks in the run.
+
+COMPLETED
+Number of tasks that finished successfully.
+
+FAILED
+Number of tasks that missed deadlines or remained unfinished at the
+simulation time limit.
+
+REJECTED
+Number of tasks that could not fit any VM's configured capacity.
+
+COMPLETION RATE
+Completed tasks / total tasks * 100.
+
+AVERAGE RESPONSE TIME
+Average time from task arrival to its end time. This includes waiting
+time and execution time for tasks that have an end time.
+
+AVERAGE EXECUTION TIME
+Average time from task start to task end. It does not include the
+pre-execution waiting interval.
+
+TOTAL SIMULATION TIME
+Total simulated duration consumed by the run.
+
+CPU UTILIZATION PER NODE
+Average of the node's recorded CPU utilization samples, expressed as
+a percentage.
+
+RAM UTILIZATION PER NODE
+Average of the node's recorded RAM utilization samples, expressed as
+a percentage.
+
+TASK DISTRIBUTION
+Number of tasks assigned to each node, plus the rejected count.
+
+DEADLINE MISS RATE
+Among tasks with a response time, the fraction whose response time is
+greater than their configured deadline.
+
+LOAD IMBALANCE
+Standard deviation of the number of tasks assigned to each node.
+A lower value means task counts are more evenly distributed. It does
+not directly measure how much CPU work each node performed.
+
+14. STREAMLIT DASHBOARD: GLOBAL CONTROLS
+----------------------------------------
+The dashboard is launched with:
+streamlit run dashboard.py
+
+COLOR PALETTE
+Changes the dashboard's visual theme. It does not change simulation
+logic or scheduling results.
+
+WORKLOAD PRESET
+Selects Custom, Low Workload, Medium Workload, or High Workload.
+Presets set task count and task-generation ranges.
+
+TASK VOLUME
+Selects the number of tasks in the dashboard (slider range 50–500).
+This can override the preset's task count.
+
+SCHEDULING POLICY
+Selects Round Robin, Least Loaded, or Adaptive for a single run.
+
+SEED
+Controls reproducible task generation. Using the same seed and
+configuration generates the same task workload.
+
+EXECUTE RUN
+Runs one simulation with the selected scheduling policy and settings.
+
+BENCHMARK ALL
+Runs Round Robin, Least Loaded, and Adaptive using fresh simulation
+state and the same seeded workload/configuration.
+
+RESET
+Clears the stored single-run and comparison results and resets the
+run counter in the dashboard session.
+
+CONFIGURE INFRASTRUCTURE NODES, TASK BOUNDARIES & ADAPTIVE WEIGHTS
+Opens the advanced configuration area.
+
+15. ADVANCED CONFIGURATION PANEL
+--------------------------------
+FOG NODE SETTINGS
+For each of the three fog nodes, the user can adjust:
+- CPU cores.
+- RAM in GB.
+- Processing speed in GHz.
+- Network latency in milliseconds.
+
+The dashboard uses five initial VMs for each fog node.
+
+CLOUD SETTINGS
+The user can adjust:
+- Cloud CPU cores.
+- Cloud RAM.
+- Cloud processing speed.
+- Cloud network latency.
+
+The dashboard uses five initial cloud VMs.
+
+TASK BOUNDARIES
+The user can adjust:
+- Minimum and maximum CPU requirement.
+- Minimum and maximum RAM requirement.
+- Arrival spread.
+
+Workload and deadline ranges are inherited from the selected
+preset/defaults; this configuration panel does not expose them as
+editable number inputs.
+
+ADAPTIVE WEIGHTS
+Five sliders adjust CPU, RAM, workload, latency, and speed weights.
+A warning is displayed if the total differs from 1.00 by more than
+0.01. The application does not automatically normalize the weights.
+
+16. DASHBOARD MODULE 1: CLUSTER & NODE MATRIX
+--------------------------------------------
+Purpose:
+Inspect the infrastructure and the state of each node.
+
+It displays:
+- Node name and tier (fog/cloud).
+- CPU used, total CPU capacity, and CPU utilization.
+- RAM used, total RAM capacity, and RAM utilization.
+- Busy and idle VM counts.
+- Number of dynamic VMs.
+- Assigned and completed task counts.
+- Network latency.
+- CPU and RAM gauge visualizations.
+- Node status indicator (overloaded or optimal according to the
+  dashboard's node-state property).
+
+Before running a simulation, the module can display the configured
+infrastructure values. After running, it displays node state resulting
+from the simulation.
+
+17. DASHBOARD MODULE 2: EXECUTION & QUEUE ANALYTICS
+--------------------------------------------------
+Purpose:
+Understand what happened to tasks and how queue pressure changed.
+
+It displays:
+- Task outcomes: completed, failed, rejected.
+- Response-time distribution histogram.
+- Waiting queue depth over simulation time.
+- Peak queue length.
+- Bottleneck event log.
+- Gantt chart for up to the first 50 completed tasks.
+- Expandable full task ledger.
+
+The Gantt chart uses task start and end times and groups tasks by the
+node on which they ran.
+
+18. DASHBOARD MODULE 3: HARDWARE TIME-SERIES
+--------------------------------------------
+Purpose:
+Observe resource usage over the duration of the simulation.
+
+It displays:
+- CPU utilization time-series for each node.
+- RAM utilization time-series for each node.
+
+Use these charts to see resource peaks, compare fog and cloud usage,
+and identify periods of high resource consumption.
+
+19. DASHBOARD MODULE 4: ALGORITHM BENCHMARK
+-------------------------------------------
+Purpose:
+Compare the three scheduling strategies with the same task workload.
+
+It displays a summary table containing:
+- Completed tasks.
+- Failed tasks.
+- Rejected tasks.
+- Completion rate.
+- Average response time.
+- Average execution time.
+- Deadline miss rate.
+- Load imbalance.
+
+It also displays charts comparing:
+- Average response time.
+- Completion rate.
+- Deadline miss rate.
+- Task distribution by node.
+- Average CPU utilization by node.
+
+To populate this module, click BENCHMARK ALL in the top control area.
+
+The results help answer questions such as:
+- Which algorithm completed more tasks?
+- Which algorithm had lower average response time?
+- Which algorithm had fewer deadline misses?
+- Which algorithm distributed tasks more evenly?
+- Did one algorithm place more work on the cloud or fog nodes?
+
+There is no single universally best algorithm. The conclusion depends
+on the workload and the metric being evaluated.
+
+20. DASHBOARD MODULE 5: VM ORCHESTRATION & EXPORT
+------------------------------------------------
+Purpose:
+Inspect VM lifecycle actions and export simulation data.
+
+ORCHESTRATION COUNTERS
+- Created: number of dynamic VMs created.
+- Terminated: number of VMs terminated.
+- Scaled Up: number of scale-up operations.
+- Scaled Down: number of scale-down operations.
+- Migrations: number of successful VM migrations.
+
+VM INVENTORY
+For each VM, the table displays:
+- Host node.
+- VM ID.
+- Initial or Dynamic type.
+- CPU allocation.
+- RAM allocation.
+- Idle or Busy status.
+- Migration count.
+- Scaling-operation count.
+
+ORCHESTRATION EVENT LOG
+Displays:
+- Event time.
+- Action type.
+- Node.
+- VM ID, where applicable.
+- Event details.
+
+If no threshold is reached, the event list can be empty. The high
+workload preset makes orchestration more likely to be visible, but
+does not guarantee every action.
+
+EXPORTS
+The dashboard can download:
+- Task details CSV.
+- Single-run summary CSV.
+- Benchmark summary CSV.
+- Individual task CSV for each algorithm.
+
+SAVE ALL ARTIFACTS
+Writes available results to the local results/ directory. The exact
+files written depend on whether a single run, a benchmark, or both
+are present.
+
+21. CSV DATA AND TASK LEDGER
+----------------------------
+Task-level data includes:
+- task_id
+- cpu_required
+- ram_required
+- workload
+- deadline
+- arrival_time
+- status
+- assigned_node
+- assigned_vm_id
+- waiting_time
+- rejection_reason
+- start_time
+- end_time
+- response_time
+- execution_time
+- missed_deadline
+
+The summary CSV contains overall metrics and flattened per-node CPU,
+RAM, and task-distribution values.
+
+22. COMMAND-LINE RUNNING
+-----------------------
+Install requirements:
+python -m pip install -r requirements.txt
+
+Default run (compares all algorithms):
+python main.py
+
+Run one algorithm:
+python main.py --algorithm Adaptive --tasks 200 --seed 42
+
+Compare all algorithms:
+python main.py --compare --tasks 200 --seed 42
+
+High-workload experiment:
+python main.py --experiment high_workload --algorithm Adaptive
+
+Save results:
+python main.py --compare --tasks 200 --seed 42 --save
+
+Available algorithm names:
+- Round Robin
+- Least Loaded
+- Adaptive
+
+Available experiment presets:
+- low_workload
+- medium_workload
+- high_workload
+
+23. HOW TO RUN AND DEMONSTRATE THE PROJECT
+------------------------------------------
+Suggested dashboard demonstration:
+
+1. Start the Streamlit dashboard.
+2. Show the four-node infrastructure in Cluster & Node Matrix.
+3. Select a workload preset and a seed.
+4. Select Round Robin and click Execute Run.
+5. Explain node CPU/RAM, task assignments, and VM activity.
+6. Open Execution & Queue Analytics and explain task outcomes,
+   response time, queue depth, bottleneck events, and task ledger.
+7. Open Hardware Time-Series and explain CPU/RAM curves.
+8. Click Benchmark All.
+9. Open Algorithm Benchmark and compare all three algorithms.
+10. Select the High Workload preset and execute a run.
+11. Open VM Orchestration & Export.
+12. Explain any VM creation, scaling, migration, or termination events
+    that actually occurred. Do not claim an event happened if its
+    counter/event log is zero.
+13. Show the VM inventory and download/export CSV files.
+
+24. PROJECT LIMITATIONS AND HONEST SCOPE
+----------------------------------------
+- This is a software simulation, not a real cloud/fog deployment.
+- VMs are Python objects and resource allocations, not hypervisor VMs.
+- Tasks are synthetic; they are not production workload traces.
+- Adaptive is a weighted heuristic and depends on its configured
+  weights.
+- A high-workload run may trigger more orchestration, but it does not
+  guarantee every action type.
+- A benchmark compares the scheduling algorithms. It should not be
+  described as a separate controlled comparison of VM orchestration
+  strategies.
+- Load imbalance measures task-count distribution, not equal CPU
+  consumption or equal workload sizes.
+
+25. SHORT PROJECT EXPLANATION FOR A PRESENTATION
+------------------------------------------------
+"Our project simulates a hybrid cloud-fog computing environment with
+three fog nodes and one cloud server. Each node hosts multiple
+simulated virtual machines. Computational tasks with different CPU,
+RAM, workload, arrival-time, and deadline requirements are generated
+and distributed using Round Robin, Least Loaded, or a weighted
+Adaptive load-balancing algorithm.
+
+When resources are temporarily unavailable, tasks enter a FIFO
+waiting queue and are retried as resources become free. The system
+monitors CPU/RAM utilization and bottlenecks. A policy-driven VM
+orchestrator can simulate VM creation, scaling, migration, and
+termination by reallocating the host's resources.
+
+Finally, the project calculates completion rate, response time,
+execution time, deadline misses, utilization, task distribution, and
+load imbalance. A Streamlit dashboard visualizes infrastructure,
+execution behavior, resource usage, algorithm comparisons, VM
+orchestration events, and CSV exports."
+
+END OF DOCUMENT
