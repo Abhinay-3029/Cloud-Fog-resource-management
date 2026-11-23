@@ -628,8 +628,8 @@ with rail_col:
     if res:
         for node in res["nodes"]:
             nd = node.to_dict()
-            cpu_u = min(100.0, float(nd["cpu_utilization"]))
-            ram_u = min(100.0, float(nd["ram_utilization"]))
+            cpu_u = min(100.0, float(nd["avg_cpu_utilization"]))
+            ram_u = min(100.0, float(nd["avg_ram_utilization"]))
             bar_col = T["danger"] if nd["is_overloaded"] else T["primary"]
             st.markdown(f"""
             <div class="mini-node">
