@@ -485,9 +485,9 @@ with st.container(border=True):
                 "w_speed": w_speed,
             }
 
-# 
+ 
 # Build & Execute Simulation Engine
-# 
+ 
 
 task_config = {
     "cpu_range": (cpu_min, cpu_max),
@@ -519,9 +519,9 @@ if run_compare:
 
 res = st.session_state.simulation_results
 
-# 
+ 
 # ZONE 2: 5-Card Bento KPI Strip
-# 
+ 
 
 if res:
     s = res["metrics"].summary()
@@ -592,15 +592,15 @@ if res:
 
     st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
-# 
+ 
 # ZONE 3: Left Navigation Rail + Right Dynamic Workspace Stage
-# 
+ 
 
 rail_col, stage_col = st.columns([1, 3.2], gap="medium")
 
-# 
+ 
 # LEFT RAIL: Module Switcher + Live Node Pulse + Quick Exports
-# 
+
 with rail_col:
     st.markdown('<div class="rail-card">', unsafe_allow_html=True)
     st.markdown('<div class="rail-title">Workspace Views</div>', unsafe_allow_html=True)
@@ -677,15 +677,15 @@ with rail_col:
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ----------------------------------------------------------------------
+
 # RIGHT STAGE: Active Module Content
-# ----------------------------------------------------------------------
+
 with stage_col:
     with st.container(border=True):
 
-        # ==============================================================
+        
         # MODULE 1: Cluster & Node Matrix
-        # ==============================================================
+        
         if chosen_module == "Cluster & Node Matrix":
             st.markdown('<div class="stage-header">Cluster Topology & Node Resource Matrix</div>', unsafe_allow_html=True)
 
@@ -865,9 +865,9 @@ with stage_col:
                 with st.expander("Inspect Complete Task Ledger"):
                     st.dataframe(df, use_container_width=True, height=340, hide_index=True)
 
-        # ==============================================================
+        
         # MODULE 3: Hardware Time-Series
-        # ==============================================================
+       
         elif chosen_module == "Hardware Time-Series":
             st.markdown('<div class="stage-header">Continuous Node CPU & RAM Utilization Telemetry</div>', unsafe_allow_html=True)
 
@@ -908,9 +908,9 @@ with stage_col:
                 )
                 st.plotly_chart(style_fig(fig_ram, height=350), use_container_width=True)
 
-        # ==============================================================
+        
         # MODULE 4: Algorithm Benchmark
-        # ==============================================================
+
         elif chosen_module == "Algorithm Benchmark":
             st.markdown('<div class="stage-header">Multi-Algorithm Comparative Benchmark</div>', unsafe_allow_html=True)
 
