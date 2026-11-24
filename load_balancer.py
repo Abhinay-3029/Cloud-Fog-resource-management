@@ -43,9 +43,9 @@ class LoadBalancer:
         pass
 
 
-# ======================================================================
+
 # Algorithm 1: Round Robin
-# ======================================================================
+
 
 class RoundRobinBalancer(LoadBalancer):
     """
@@ -87,9 +87,9 @@ class RoundRobinBalancer(LoadBalancer):
         self._counter = 0
 
 
-# ======================================================================
+
 # Algorithm 2: Least Loaded
-# ======================================================================
+
 
 class LeastLoadedBalancer(LoadBalancer):
     """
@@ -120,9 +120,9 @@ class LeastLoadedBalancer(LoadBalancer):
         return None
 
 
-# ======================================================================
+
 # Algorithm 3: Adaptive Load Balancer (Proposed)
-# ======================================================================
+
 
 class AdaptiveBalancer(LoadBalancer):
     """
@@ -208,9 +208,9 @@ class AdaptiveBalancer(LoadBalancer):
         return best_node  # None if no node can accept
 
 
-# ======================================================================
+
 # Factory function — handy for the simulation engine & dashboard
-# ======================================================================
+
 
 def create_balancer(algorithm_name: str, weights: dict = None) -> LoadBalancer:
     """

@@ -49,11 +49,11 @@ class VirtualMachine:
         self.ram_used = 0.0
 
         # The task currently running on this VM (None if idle)
-        self.current_task = None  # type: Task or None
+        self.current_task = None  
 
-    # ------------------------------------------------------------------
+    
     # Resource queries
-    # ------------------------------------------------------------------
+    
 
     @property
     def cpu_available(self):
@@ -84,9 +84,9 @@ class VirtualMachine:
             return 0.0
         return self.ram_used / self.ram_allocated
 
-    # ------------------------------------------------------------------
+
     # Task lifecycle
-    # ------------------------------------------------------------------
+    
 
     def can_accept(self, task: Task) -> bool:
         """
@@ -170,9 +170,9 @@ class VirtualMachine:
             self.ram_used = max(0.0, self.ram_used)
             self.current_task = None
 
-    # ------------------------------------------------------------------
+    
     # Future extension stubs
-    # ------------------------------------------------------------------
+    
 
     def migrate_to(self, source_node, target_node):
         """Move this VM to target_node while preserving its running task."""
@@ -189,9 +189,9 @@ class VirtualMachine:
         self.scale_count += 1
         return True
 
-    # ------------------------------------------------------------------
+    
     # Representation
-    # ------------------------------------------------------------------
+    
 
     def __repr__(self):
         status = "IDLE" if self.is_idle else f"Running Task {self.current_task.task_id}"

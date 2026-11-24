@@ -48,9 +48,9 @@ class MetricsCalculator:
         self.total_time = total_time
         self.algorithm_name = algorithm_name
 
-    # ------------------------------------------------------------------
+    
     # Individual metric methods
-    # ------------------------------------------------------------------
+    
 
     def avg_response_time(self) -> float:
         """
@@ -149,9 +149,9 @@ class MetricsCalculator:
         counts = [node.tasks_assigned for node in self.nodes]
         return float(np.std(counts)) if counts else 0.0
 
-    # ------------------------------------------------------------------
+    
     # Summary
-    # ------------------------------------------------------------------
+    
 
     def summary(self) -> dict:
         """

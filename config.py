@@ -14,9 +14,9 @@ Sections
 5. Experiment presets (low / medium / high workload)
 """
 
-# ---------------------------------------------------------------------------
+
 # 1. INFRASTRUCTURE DEFAULTS
-# ---------------------------------------------------------------------------
+
 # Each fog node is a small edge server.  The cloud server is more powerful but
 # has higher network latency (data must travel to a remote data centre).
 
@@ -56,9 +56,9 @@ CLOUD_SERVER_DEFAULT = {
     "num_vms": 5,
 }
 
-# ---------------------------------------------------------------------------
+
 # 2. TASK GENERATION PARAMETERS
-# ---------------------------------------------------------------------------
+
 # Tasks are generated randomly within these bounds.
 
 TASK_DEFAULTS = {
@@ -70,9 +70,9 @@ TASK_DEFAULTS = {
     "arrival_spread": 10.0,          # Tasks arrive within this many seconds
 }
 
-# ---------------------------------------------------------------------------
+
 # 3. ADAPTIVE LOAD-BALANCER WEIGHTS
-# ---------------------------------------------------------------------------
+
 # These weights control how the Adaptive algorithm scores each node.
 # They must sum to 1.0.  Increasing a weight makes that factor more important.
 #
@@ -87,9 +87,9 @@ ADAPTIVE_WEIGHTS = {
     "w_speed": 0.10,        # Weight for processing speed (higher → better)
 }
 
-# ---------------------------------------------------------------------------
+
 # 4. SIMULATION ENGINE SETTINGS
-# ---------------------------------------------------------------------------
+
 
 SIMULATION_DEFAULTS = {
     "time_step": 0.1,       # Seconds per simulation tick
@@ -97,9 +97,9 @@ SIMULATION_DEFAULTS = {
     "random_seed": 42,      # For reproducibility across algorithm comparisons
 }
 
-# ---------------------------------------------------------------------------
+
 # 5. EXPERIMENT PRESETS
-# ---------------------------------------------------------------------------
+
 # Ready-made configurations for academic experiments.
 
 EXPERIMENT_PRESETS = {
@@ -129,8 +129,8 @@ EXPERIMENT_PRESETS = {
     },
 }
 
-# ---------------------------------------------------------------------------
+
 # 6. AVAILABLE ALGORITHMS
-# ---------------------------------------------------------------------------
+
 
 ALGORITHMS = ["Round Robin", "Least Loaded", "Adaptive"]

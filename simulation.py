@@ -80,9 +80,9 @@ class SimulationEngine:
         self.task_config = task_config or {}
         self.adaptive_weights = adaptive_weights or ADAPTIVE_WEIGHTS
 
-    # ------------------------------------------------------------------
+    
     # Infrastructure creation
-    # ------------------------------------------------------------------
+    
 
     def _create_nodes(self):
         """Build fresh fog nodes and cloud server from configs."""
@@ -115,9 +115,9 @@ class SimulationEngine:
         )
         return gen.generate(num_tasks=self.num_tasks)
 
-    # ------------------------------------------------------------------
+    
     # Main simulation loop
-    # ------------------------------------------------------------------
+    
 
     def run(self, algorithm_name: str, progress_callback=None) -> dict:
         """
@@ -171,7 +171,7 @@ class SimulationEngine:
 
         start_wall = wall_time.time()
 
-        # --- Main loop ---
+        #  Main loop 
         while current_time <= self.max_time:
             # (a) Assign tasks that have arrived by this time
             while task_index < total_tasks:
@@ -217,7 +217,7 @@ class SimulationEngine:
 
             current_time = round(current_time + self.time_step, 4)
 
-        # --- Post-processing ---
+        #  Post-processing 
         vm_orchestrator.finalize(current_time, nodes)
         end_wall = wall_time.time()
 
@@ -253,9 +253,9 @@ class SimulationEngine:
             "vm_orchestrator": vm_orchestrator,
         }
 
-    # ------------------------------------------------------------------
+    
     # Compare all algorithms
-    # ------------------------------------------------------------------
+    
 
     def compare_all(self, algorithms: list = None,
                     progress_callback=None) -> list:

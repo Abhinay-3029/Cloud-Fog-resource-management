@@ -56,7 +56,7 @@ class Node:
         self.network_latency = network_latency
         self.node_type = node_type
 
-        # --- Create VMs ------------------------------------------------
+        #  Create VMs 
         # Resources are divided equally among VMs.
         self.vms = []  # list of VirtualMachine objects
         cpu_per_vm = cpu_capacity / num_vms
@@ -74,7 +74,7 @@ class Node:
         self.initial_vm_count = num_vms
         self.orchestration_history = []
 
-        # --- Bookkeeping -----------------------------------------------
+        #  Bookkeeping 
         self.tasks_assigned = 0       # Total tasks ever assigned
         self.tasks_completed = 0      # Successfully finished
         self.tasks_failed = 0         # Deadline-missed or errored
@@ -83,9 +83,9 @@ class Node:
         self.cpu_history: list[float] = []
         self.ram_history: list[float] = []
 
-    # ------------------------------------------------------------------
+    
     # Aggregate resource queries
-    # ------------------------------------------------------------------
+    
 
     @property
     def cpu_used(self) -> float:
@@ -312,9 +312,9 @@ class Node:
         self.cpu_history.clear()
         self.ram_history.clear()
 
-    # ------------------------------------------------------------------
+    
     # Display
-    # ------------------------------------------------------------------
+    
 
     def to_dict(self):
         """Summary dictionary for dashboard display."""
@@ -349,9 +349,9 @@ class Node:
                 f"VMs busy={self.active_task_count}/{self.total_vm_count})")
 
 
-# ======================================================================
+
 # Concrete subclasses
-# ======================================================================
+
 
 class FogNode(Node):
     """

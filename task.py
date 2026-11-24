@@ -86,9 +86,9 @@ class Task:
         # Remaining work — decremented during execution
         self.remaining_workload = workload
 
-    # ------------------------------------------------------------------
+    
     # Computed properties
-    # ------------------------------------------------------------------
+    
 
     @property
     def response_time(self):
@@ -128,9 +128,9 @@ class Task:
             return (self.end_time - self.arrival_time) > self.deadline
         return False
 
-    # ------------------------------------------------------------------
+    
     # Helpers
-    # ------------------------------------------------------------------
+    
 
     def to_dict(self):
         """Convert to dictionary for easy export to Pandas / CSV."""

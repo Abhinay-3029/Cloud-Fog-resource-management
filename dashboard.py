@@ -986,9 +986,9 @@ with stage_col:
                     )
                     st.plotly_chart(style_fig(f5, height=320), use_container_width=True)
 
-        # ==============================================================
+        
         # MODULE 5: VM Orchestration & Export
-        # ==============================================================
+        
         elif chosen_module == "VM Orchestration & Export":
             st.markdown('<div class="stage-header">Dynamic VM Orchestration & Dataset Export</div>', unsafe_allow_html=True)
 
@@ -1078,9 +1078,8 @@ with stage_col:
                                 r["metrics"].tasks_dataframe().to_csv(f"results/tasks_{slug}.csv", index=False)
                         st.success("Saved all results to results/ directory.")
 
-# ======================================================================
+
 # Footer
-# ======================================================================
 
 st.markdown(
     f"<div style='text-align: center; color: {T['text_secondary']}; font-size: 12px; margin-top: 18px;'>"
